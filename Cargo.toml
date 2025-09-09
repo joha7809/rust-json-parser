@@ -1,0 +1,11 @@
+[package]
+name = "rust-json-parser"
+version = "0.1.0"
+edition = "2021"
+description = "A JSON parser implementation in Rust for educational purposes"
+license = "MIT"
+repository = "https://github.com/joha7809/rust-json-parser"
+
+[dependencies]
+
+[dev-dependencies]
