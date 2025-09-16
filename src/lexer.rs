@@ -1,5 +1,7 @@
 use std::{char, str::Chars};
 
+use crate::lexer_error::{LexerError, LexerErrorKinds};
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum TokenKind {
     LeftBrace,    // {
@@ -32,7 +34,7 @@ pub struct Lexer<'a> {
 }
 
 impl<'a> Iterator for Lexer<'a> {
-    type Item = Result<Token, ()>;
+    type Item = Result<Token, LexerError>;
     fn next(&mut self) -> Option<Self::Item> {
         match self.next_token() {
             Ok(Token {
@@ -56,7 +58,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn next_token(&mut self) -> Result<Token, ()> {
+    pub fn next_token(&mut self) -> Result<Token, LexerError> {
         // Start by skipping whitespace
         self.skip_whitespace();
         let next_char = self.peek();
@@ -98,7 +100,7 @@ impl<'a> Lexer<'a> {
                 todo!();
             }
 
-            _ => Err(()), // Handle other characters or errors
+            c => Err(self.return_error(LexerErrorKinds::UnexcpectedChar(c))),
         }
     }
 
@@ -138,8 +140,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    // TODO: IMplement error handling for this and above function
-    fn read_string(&mut self) -> Result<String, ()> {
+    fn read_string(&mut self) -> Result<String, LexerError> {
         let mut result = String::new();
         self.advance(); // Skip the opening quote
 
@@ -148,14 +149,14 @@ impl<'a> Lexer<'a> {
                 self.advance();
                 return Ok(result);
             }
-            //TODO: IMplement escape characters
+            //TODO: Implement escape characters
             result.push(c);
             self.advance();
         }
-        Err(())
+        Err(self.return_error(LexerErrorKinds::UnclosedString))
     }
 
-    fn read_number(&mut self) -> Result<f64, ()> {
+    fn read_number(&mut self) -> Result<f64, LexerError> {
         let mut nums = String::new();
 
         // Check for optional minus
@@ -173,15 +174,22 @@ impl<'a> Lexer<'a> {
         // Optional exponent
         self.read_exponent(&mut nums)?;
 
-        nums.parse::<f64>().map_err(|_| ())
+        nums.parse::<f64>()
+            .map_err(|_| self.return_error(LexerErrorKinds::CastingError))
     }
 
-    fn read_integer(&mut self, nums: &mut String) -> Result<(), ()> {
+    fn read_integer(&mut self, nums: &mut String) -> Result<(), LexerError> {
         // Read integers
         match self.peek() {
             Some('0') => {
                 nums.push('0');
                 self.advance();
+                // 0 cannot be followed by other digits
+                if let Some(c) = self.peek() {
+                    if c.is_ascii_digit() {
+                        return Err(self.return_error(LexerErrorKinds::LeadingZero));
+                    }
+                }
             }
             Some(c) if c.is_ascii_digit() => {
                 while let Some(d) = self.peek() {
@@ -193,12 +201,12 @@ impl<'a> Lexer<'a> {
                     }
                 }
             }
-            _ => return Err(()),
+            _ => return Err(self.return_error(LexerErrorKinds::InvalidNumber)),
         }
         Ok(())
     }
 
-    fn read_fraction(&mut self, nums: &mut String) -> Result<(), ()> {
+    fn read_fraction(&mut self, nums: &mut String) -> Result<(), LexerError> {
         if let Some('.') = self.peek() {
             let mut num_found = false;
             nums.push('.');
@@ -216,13 +224,13 @@ impl<'a> Lexer<'a> {
             }
 
             if !num_found {
-                return Err(());
+                return Err(self.return_error(LexerErrorKinds::InvalidDecimal));
             }
         }
         Ok(())
     }
 
-    fn read_exponent(&mut self, nums: &mut String) -> Result<(), ()> {
+    fn read_exponent(&mut self, nums: &mut String) -> Result<(), LexerError> {
         if let Some('e') | Some('E') = self.peek() {
             nums.push('e');
             self.advance();
@@ -244,10 +252,18 @@ impl<'a> Lexer<'a> {
             }
 
             if !digit_found {
-                return Err(());
+                return Err(self.return_error(LexerErrorKinds::InvalidExponent));
             }
         }
         Ok(())
+    }
+
+    fn return_error(&self, kind: LexerErrorKinds) -> LexerError {
+        LexerError {
+            kind,
+            line: self.line,
+            column: self.column,
+        }
     }
 }
 
@@ -331,5 +347,82 @@ mod tests {
             TokenKind::RightBrace,
         ];
         assert_eq!(lex_all(input), expected);
+    }
+    #[test]
+    fn test_unexpected_char_error() {
+        let mut lexer = Lexer::new("@");
+        let result = lexer.next_token();
+        assert!(matches!(
+            result,
+            Err(LexerError {
+                kind: LexerErrorKinds::UnexcpectedChar('@'),
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn test_unclosed_string_error() {
+        let mut lexer = Lexer::new("\"unterminated");
+        let result = lexer.next_token();
+        assert!(matches!(
+            result,
+            Err(LexerError {
+                kind: LexerErrorKinds::UnclosedString,
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn test_leading_zero_error() {
+        let mut lexer = Lexer::new("0123");
+        let result = lexer.next_token();
+        assert!(matches!(
+            result,
+            Err(LexerError {
+                kind: LexerErrorKinds::LeadingZero,
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn test_invalid_number_error() {
+        let mut lexer = Lexer::new("-");
+        let result = lexer.next_token();
+        assert!(matches!(
+            result,
+            Err(LexerError {
+                kind: LexerErrorKinds::InvalidNumber,
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn test_invalid_decimal_error() {
+        let mut lexer = Lexer::new("1.");
+        let result = lexer.next_token();
+        assert!(matches!(
+            result,
+            Err(LexerError {
+                kind: LexerErrorKinds::InvalidDecimal,
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn test_invalid_exponent_error() {
+        let mut lexer = Lexer::new("1e");
+        let result = lexer.next_token();
+        assert!(matches!(
+            result,
+            Err(LexerError {
+                kind: LexerErrorKinds::InvalidExponent,
+                ..
+            })
+        ));
     }
 }
