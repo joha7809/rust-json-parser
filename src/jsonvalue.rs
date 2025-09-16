@@ -1,6 +1,7 @@
 use std::collections::HashMap;
+use std::fmt;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum JSONValue {
     Array(Vec<JSONValue>),
     /// Classic boolean - true, false
@@ -13,46 +14,56 @@ pub enum JSONValue {
     String(String),
 }
 
-impl JSONValue {
-    /// Returns `true` if the jsonvalue is [`Array`].
-    ///
-    /// [`Array`]: JSONValue::Array
-    pub fn is_array(&self) -> bool {
-        matches!(self, Self::Array(..))
-    }
+#[derive(Debug, PartialEq, Clone)]
+pub enum TokenKind {
+    LeftBrace,    // {
+    RightBrace,   // }
+    LeftBracket,  // [
+    RightBracket, // ]
+    Colon,        // :
+    Comma,        // ,
+    String(String),
+    Number(f64),
+    True,
+    False,
+    Null,
+    EOF,
+}
 
-    /// Returns `true` if the jsonvalue is [`Bool`].
-    ///
-    /// [`Bool`]: JSONValue::Bool
-    pub fn is_bool(&self) -> bool {
-        matches!(self, Self::Bool(..))
+impl fmt::Display for TokenKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TokenKind::LeftBrace => write!(f, "{{"),
+            TokenKind::RightBrace => write!(f, "}}"),
+            TokenKind::LeftBracket => write!(f, "["),
+            TokenKind::RightBracket => write!(f, "]"),
+            TokenKind::Colon => write!(f, ":"),
+            TokenKind::Comma => write!(f, ","),
+            TokenKind::String(s) => write!(f, "string: \"{}\"", s),
+            TokenKind::Number(n) => write!(f, "number({})", n),
+            TokenKind::True => write!(f, "true"),
+            TokenKind::False => write!(f, "false"),
+            TokenKind::Null => write!(f, "null"),
+            TokenKind::EOF => write!(f, "EOF"),
+        }
     }
+}
 
-    /// Returns `true` if the jsonvalue is [`Null`].
-    ///
-    /// [`Null`]: JSONValue::Null
-    pub fn is_null(&self) -> bool {
-        matches!(self, Self::Null)
-    }
-
-    /// Returns `true` if the jsonvalue is [`Number`].
-    ///
-    /// [`Number`]: JSONValue::Number
-    pub fn is_number(&self) -> bool {
-        matches!(self, Self::Number(..))
-    }
-
-    /// Returns `true` if the jsonvalue is [`Object`].
-    ///
-    /// [`Object`]: JSONValue::Object
-    pub fn is_object(&self) -> bool {
-        matches!(self, Self::Object(..))
-    }
-
-    /// Returns `true` if the jsonvalue is [`String`].
-    ///
-    /// [`String`]: JSONValue::String
-    pub fn is_string(&self) -> bool {
-        matches!(self, Self::String(..))
+impl TokenKind {
+    pub fn display_len(&self) -> usize {
+        match self {
+            TokenKind::LeftBrace
+            | TokenKind::RightBrace
+            | TokenKind::LeftBracket
+            | TokenKind::RightBracket
+            | TokenKind::Colon
+            | TokenKind::Comma => 1,
+            TokenKind::String(s) => s.len() + 2, // include quotes
+            TokenKind::Number(n) => n.to_string().len(),
+            TokenKind::True => 4,
+            TokenKind::False => 5,
+            TokenKind::Null => 4,
+            TokenKind::EOF => 1,
+        }
     }
 }

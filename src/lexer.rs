@@ -1,22 +1,9 @@
 use std::{char, str::Chars};
 
-use crate::lexer_error::{LexerError, LexerErrorKinds};
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum TokenKind {
-    LeftBrace,    // {
-    RightBrace,   // }
-    LeftBracket,  // [
-    RightBracket, // ]
-    Colon,        // :
-    Comma,        // ,
-    String(String),
-    Number(f64),
-    True,
-    False,
-    Null,
-    EOF,
-}
+use crate::{
+    jsonvalue::TokenKind,
+    lexer_error::{LexerError, LexerErrorKinds},
+};
 
 #[derive(Debug, Clone)]
 pub struct Token {
@@ -31,17 +18,25 @@ pub struct Lexer<'a> {
     input: std::iter::Peekable<Chars<'a>>,
     line: usize,   // Current line Number
     column: usize, // Current column number
+    finished: bool,
 }
 
 impl<'a> Iterator for Lexer<'a> {
     type Item = Result<Token, LexerError>;
     fn next(&mut self) -> Option<Self::Item> {
+        if self.finished {
+            return None;
+        }
         match self.next_token() {
-            Ok(Token {
-                kind: TokenKind::EOF,
-                ..
-            }) => None,
-            Ok(token) => Some(Ok(token)),
+            Ok(token) => {
+                if let TokenKind::EOF = token.kind {
+                    // Emit EOF once, then mark finished so subsequent next() returns None
+                    self.finished = true;
+                    Some(Ok(token))
+                } else {
+                    Some(Ok(token))
+                }
+            }
             Err(e) => Some(Err(e)),
         }
     }
@@ -55,6 +50,7 @@ impl<'a> Lexer<'a> {
             input: chars,
             line: 1,
             column: 1,
+            finished: false,
         }
     }
 
@@ -80,11 +76,13 @@ impl<'a> Lexer<'a> {
             ':' => Ok(self.new_simple_token(TokenKind::Colon)),
             ',' => Ok(self.new_simple_token(TokenKind::Comma)),
             '"' => {
+                let start_column = self.column;
                 let string_value = self.read_string()?;
+                let length = string_value.len() + 2; // +2 for quotes
                 Ok(Token {
                     kind: TokenKind::String(string_value),
                     line: self.line,
-                    column: self.column,
+                    column: start_column,
                 })
             }
             n if n.is_ascii_digit() || n == '-' => {
@@ -97,22 +95,27 @@ impl<'a> Lexer<'a> {
             }
 
             'f' | 't' | 'n' => {
+                // TODO: Implement true, false, null
                 todo!();
             }
-
-            c => Err(self.return_error(LexerErrorKinds::UnexcpectedChar(c))),
+            c => {
+                let err = self.return_error(LexerErrorKinds::UnexcpectedChar(c));
+                self.advance(); // skip it!
+                Err(err)
+            }
         }
     }
 
     /// Generates a simple token, that is those of one char. Do not use on other kinds, as the
     /// function advances
     fn new_simple_token(&mut self, kind: TokenKind) -> Token {
-        self.advance();
-        Token {
+        let token = Token {
             kind,
             line: self.line,
             column: self.column,
-        }
+        };
+        self.advance();
+        token
     }
 
     fn advance(&mut self) {
@@ -248,6 +251,8 @@ impl<'a> Lexer<'a> {
                     nums.push(d);
                     self.advance();
                     digit_found = true;
+                } else {
+                    break;
                 }
             }
 

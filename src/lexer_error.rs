@@ -1,6 +1,6 @@
 use std::fmt;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum LexerErrorKinds {
     UnexcpectedChar(char),
     InvalidEscapeChar(char),
@@ -12,7 +12,7 @@ pub enum LexerErrorKinds {
     CastingError,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct LexerError {
     pub kind: LexerErrorKinds,
     pub line: usize,
