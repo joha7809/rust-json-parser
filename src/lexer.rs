@@ -78,7 +78,6 @@ impl<'a> Lexer<'a> {
             '"' => {
                 let start_column = self.column;
                 let string_value = self.read_string()?;
-                let length = string_value.len() + 2; // +2 for quotes
                 Ok(Token {
                     kind: TokenKind::String(string_value),
                     line: self.line,
