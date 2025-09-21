@@ -64,7 +64,10 @@ impl ParserError {
                     ParserErrorKind::UnexpectedEOF => 1,
                 };
 
-                eprintln!("Parse error at line {}, column {}: {}", line, column, kind);
+                eprintln!(
+                    "\x1b[31mParse error at line {}, column {}: {}\x1b[0m",
+                    line, column, kind
+                );
 
                 if let Some(code_line) = lines.get(line - 1) {
                     eprintln!("{:>4} | {}", line, code_line);
@@ -77,11 +80,11 @@ impl ParserError {
                 }
             }
             ParserError::Lexer(err) => {
-                eprintln!("Lexer error: {}", err);
+                eprintln!("\x1b[31mLexer error: {}\x1b[0m", err);
 
                 if let Some(code_line) = lines.get(err.line - 1) {
                     eprintln!("{:>4} | {}", err.line, code_line);
-                    eprintln!("     | {:>width$}{}", "", "^", width = err.column - 1);
+                    eprintln!("     | {:>width$}^", "", width = err.column - 1);
                 }
             }
         }
