@@ -1,0 +1,16 @@
+{
+  "name": "Alice,
+  "age": 30,
+  "is_member": tru,
+  "favorites": {
+    "colors": ["red", "green", blue],
+    "numbers": [1, 2, 3,],
+    "nested": {
+      "key": "value"
+      "missing_comma": "oops"
+    }
+  },
+  "bio": "Loves coding.\u0007",
+  "extra": [null, undefined]
+}
+

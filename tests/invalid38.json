@@ -1,0 +1,17 @@
+{
+  name: "Bob",
+  "age": "twenty-five",
+  "active": yes,
+  "address": {
+    "street": "123 Main St",
+    "city": "Metropolis"
+    "zip": 12345
+  },
+  "hobbies": ["reading",, "gaming"],
+  "profile": {
+    "bio": "Enjoys hiking and photography
+    "website": "http://example.com"
+  },
+  "scores": [10 20 30]
+}
+
