@@ -7,6 +7,7 @@ pub enum LexerErrorKinds {
     UnclosedString,
     LeadingZero,
     InvalidNumber,
+    InvalidLiteral,
     InvalidDecimal,
     InvalidExponent,
     CastingError,
@@ -20,6 +21,7 @@ pub struct LexerError {
 }
 
 impl fmt::Display for LexerError {
+    // TODO: Instead of returning to_string for each case, use write! macro to write directly to the formatter
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let description = match self.kind {
             LexerErrorKinds::UnexcpectedChar(c) => format!("Unexpected character: '{}'", c),
@@ -30,6 +32,7 @@ impl fmt::Display for LexerError {
             LexerErrorKinds::InvalidDecimal => "Invalid decimal format".to_string(),
             LexerErrorKinds::InvalidExponent => "Invalid exponent format".to_string(),
             LexerErrorKinds::CastingError => "Error casting number".to_string(),
+            LexerErrorKinds::InvalidLiteral => "Invalid literal".to_string(),
         };
         write!(
             f,

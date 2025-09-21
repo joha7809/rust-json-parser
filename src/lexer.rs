@@ -12,7 +12,7 @@ pub struct Token {
     pub column: usize,
 }
 
-pub struct Lexer<'a> {
+pub(crate) struct Lexer<'a> {
     // Define the fields for the Lexer struct
     // e.g., input string, current position, etc.
     input: std::iter::Peekable<Chars<'a>>,
@@ -61,20 +61,16 @@ impl<'a> Lexer<'a> {
         let c = match next_char {
             Some(c) => c,
             None => {
-                return Ok(Token {
-                    kind: TokenKind::EOF,
-                    line: self.line,
-                    column: self.column,
-                });
+                return Ok(self.new_token(TokenKind::EOF));
             }
         };
         match c {
-            '{' => Ok(self.new_simple_token(TokenKind::LeftBrace)),
-            '}' => Ok(self.new_simple_token(TokenKind::RightBrace)),
-            '[' => Ok(self.new_simple_token(TokenKind::LeftBracket)),
-            ']' => Ok(self.new_simple_token(TokenKind::RightBracket)),
-            ':' => Ok(self.new_simple_token(TokenKind::Colon)),
-            ',' => Ok(self.new_simple_token(TokenKind::Comma)),
+            '{' => Ok(self.new_token_advance(TokenKind::LeftBrace)),
+            '}' => Ok(self.new_token_advance(TokenKind::RightBrace)),
+            '[' => Ok(self.new_token_advance(TokenKind::LeftBracket)),
+            ']' => Ok(self.new_token_advance(TokenKind::RightBracket)),
+            ':' => Ok(self.new_token_advance(TokenKind::Colon)),
+            ',' => Ok(self.new_token_advance(TokenKind::Comma)),
             '"' => {
                 let start_column = self.column;
                 let string_value = self.read_string()?;
@@ -86,16 +82,12 @@ impl<'a> Lexer<'a> {
             }
             n if n.is_ascii_digit() || n == '-' => {
                 let number_value = self.read_number()?;
-                Ok(Token {
-                    kind: TokenKind::Number(number_value),
-                    line: self.line,
-                    column: self.column,
-                })
+                Ok(self.new_token(TokenKind::Number(number_value)))
             }
 
-            'f' | 't' | 'n' => {
-                // TODO: Implement true, false, null
-                todo!();
+            n @ ('f' | 't' | 'n') => {
+                let token_kind = self.read_literal(n)?;
+                Ok(self.new_token(token_kind))
             }
             c => {
                 let err = self.return_error(LexerErrorKinds::UnexcpectedChar(c));
@@ -107,7 +99,7 @@ impl<'a> Lexer<'a> {
 
     /// Generates a simple token, that is those of one char. Do not use on other kinds, as the
     /// function advances
-    fn new_simple_token(&mut self, kind: TokenKind) -> Token {
+    fn new_token_advance(&mut self, kind: TokenKind) -> Token {
         let token = Token {
             kind,
             line: self.line,
@@ -115,6 +107,14 @@ impl<'a> Lexer<'a> {
         };
         self.advance();
         token
+    }
+
+    fn new_token(&mut self, kind: TokenKind) -> Token {
+        Token {
+            kind,
+            line: self.line,
+            column: self.column,
+        }
     }
 
     fn advance(&mut self) {
@@ -268,6 +268,30 @@ impl<'a> Lexer<'a> {
             line: self.line,
             column: self.column,
         }
+    }
+
+    fn read_literal(&mut self, b_char: char) -> Result<TokenKind, LexerError> {
+        let literal = match b_char {
+            't' => "true",
+            'f' => "false",
+            'n' => "null",
+            _ => unreachable!(),
+        };
+        for expected_char in literal.chars() {
+            match self.peek() {
+                Some(c) if c == expected_char => self.advance(),
+                _ => return Err(self.return_error(LexerErrorKinds::InvalidLiteral)),
+            }
+        }
+        if self.peek().is_some_and(|c| c.is_ascii_alphanumeric()) {
+            return Err(self.return_error(LexerErrorKinds::InvalidLiteral));
+        }
+        Ok(match b_char {
+            't' => TokenKind::True,
+            'f' => TokenKind::False,
+            'n' => TokenKind::Null,
+            _ => unreachable!(),
+        })
     }
 }
 
