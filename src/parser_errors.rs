@@ -9,6 +9,7 @@ pub enum ParserErrorKind {
     // you can add "ExpectedButFound" variants for richer errors
     ExpectedToken(TokenKind, TokenKind), // expected, found
     ExpectedObjectEndOrComma(TokenKind), // found
+    TrailingComma,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -32,6 +33,7 @@ impl fmt::Display for ParserErrorKind {
             ParserErrorKind::ExpectedObjectEndOrComma(found) => {
                 write!(f, "Expected ',' or '}}' in object, but found {}", found)
             }
+            ParserErrorKind::TrailingComma => write!(f, "Trailing comma found"),
         }
     }
 }
@@ -62,6 +64,7 @@ impl ParserError {
                     ParserErrorKind::ExpectedToken(_, tok) => tok.display_len(),
                     ParserErrorKind::ExpectedObjectEndOrComma(tok) => tok.display_len(),
                     ParserErrorKind::UnexpectedEOF => 1,
+                    ParserErrorKind::TrailingComma => 1,
                 };
 
                 eprintln!(

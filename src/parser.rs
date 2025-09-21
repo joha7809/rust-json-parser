@@ -56,7 +56,7 @@ where
         Ok(self.advance()?.kind)
     }
 
-    fn expect(&mut self, kind: TokenKind) -> Result<(), ParserError> {
+    fn expect(&mut self, kind: TokenKind) -> Result<Token, ParserError> {
         // Uses advance_kind to advance and look at the kind returned
         let k = self.advance()?;
         if k.kind != kind {
@@ -66,17 +66,15 @@ where
                 column: k.column,
             });
         }
-        Ok(())
+        Ok(k)
     }
 
     pub fn parse(&mut self) -> PResult<JSONValue> {
         let value = self.parse_value()?;
+        // After parsing the value, we expect an EOF token
+        self.expect(TokenKind::EOF)?;
+
         Ok(value)
-        // match self.advance_kind() {
-        //     Ok(TokenKind::EOF) => Ok(value),
-        //     Ok(unexpected) => Err(format!("Expected EOF, found {:?}", unexpected).into()),
-        //     Err(e) => Err(format!("Lexer error: {}", e).into()),
-        // }
     }
 
     fn parse_value(&mut self) -> PResult<JSONValue> {
@@ -171,8 +169,29 @@ where
     }
 
     fn parse_array(&mut self) -> PResult<JSONValue> {
-        //TODO: Implement array parsing
-        todo!();
+        // Consume left bracket
+        self.expect(TokenKind::LeftBracket)?;
+        let mut arr: Vec<JSONValue> = Vec::new();
+
+        while *self.peek_kind()? != TokenKind::RightBracket {
+            // While we dont see the RightBracket, we pass the current JSON value, and expect a
+            // comma to be followed
+            arr.push(self.parse_value()?);
+            if *self.peek_kind()? != TokenKind::RightBracket {
+                let token = self.expect(TokenKind::Comma)?;
+                if *self.peek_kind()? == TokenKind::RightBracket {
+                    return Err(ParserError::Parser {
+                        kind: ParserErrorKind::TrailingComma,
+                        line: token.line,
+                        column: token.column,
+                    });
+                }
+            }
+        }
+        // Next token is RightBracket which we can safely consume
+        self.advance()?;
+
+        Ok(JSONValue::Array(arr))
     }
 }
 

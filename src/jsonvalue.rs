@@ -10,8 +10,8 @@ pub enum JSONValue {
     Null,
     /// floating point number for decimal numbers in JSON
     Number(f64),
-    Object(HashMap<String, JSONValue>),
-    String(String),
+    Object(HashMap<String, JSONValue>), //TODO: Use something else to preserve order
+    String(String),                     // TODO: use &str with lifetime for better performance
 }
 
 #[derive(Debug, PartialEq, Clone)]

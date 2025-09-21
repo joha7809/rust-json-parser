@@ -3,6 +3,7 @@ use std::fmt;
 #[derive(Debug, Clone, PartialEq)]
 pub enum LexerErrorKinds {
     UnexcpectedChar(char),
+    UnescapedControlCharacter,
     InvalidEscapeChar(char),
     UnclosedString,
     LeadingZero,
@@ -11,6 +12,7 @@ pub enum LexerErrorKinds {
     InvalidDecimal,
     InvalidExponent,
     CastingError,
+    InvalidEscape,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -33,6 +35,10 @@ impl fmt::Display for LexerError {
             LexerErrorKinds::InvalidExponent => "Invalid exponent format".to_string(),
             LexerErrorKinds::CastingError => "Error casting number".to_string(),
             LexerErrorKinds::InvalidLiteral => "Invalid literal".to_string(),
+            LexerErrorKinds::InvalidEscape => "Invalid escape sequence".to_string(),
+            LexerErrorKinds::UnescapedControlCharacter => {
+                "Unescaped control character in string".to_string()
+            }
         };
         write!(
             f,

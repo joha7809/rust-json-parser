@@ -151,9 +151,18 @@ impl<'a> Lexer<'a> {
                 self.advance();
                 return Ok(result);
             }
-            //TODO: Implement escape characters
-            result.push(c);
-            self.advance();
+            if c == '\n' || c == '\r' {
+                return Err(self.return_error(LexerErrorKinds::UnclosedString));
+            }
+            if c < '\u{20}' {
+                return Err(self.return_error(LexerErrorKinds::UnescapedControlCharacter));
+            }
+            if c == '\\' {
+                self.read_escape_sequence(&mut result)?;
+            } else {
+                result.push(c);
+                self.advance();
+            }
         }
         Err(self.return_error(LexerErrorKinds::UnclosedString))
     }
@@ -292,6 +301,67 @@ impl<'a> Lexer<'a> {
             'n' => TokenKind::Null,
             _ => unreachable!(),
         })
+    }
+
+    fn read_escape_sequence(&mut self, result: &mut String) -> Result<(), LexerError> {
+        self.advance(); // Skip the backslash
+        match self.peek() {
+            Some('\"') => {
+                result.push('\"');
+                self.advance();
+            }
+            Some('\\') => {
+                result.push('\\');
+                self.advance();
+            }
+            Some('/') => {
+                result.push('/');
+                self.advance();
+            }
+            Some('b') => {
+                result.push('\u{0008}'); // Backspace
+                self.advance();
+            }
+            Some('f') => {
+                result.push('\u{000C}'); // Formfeed
+                self.advance();
+            }
+            Some('n') => {
+                result.push('\n');
+                self.advance();
+            }
+            Some('r') => {
+                result.push('\r');
+                self.advance();
+            }
+            Some('t') => {
+                result.push('\t');
+                self.advance();
+            }
+            Some('u') => {
+                self.advance(); // Skip 'u'
+                let mut hex = String::new();
+                for _ in 0..4 {
+                    match self.peek() {
+                        Some(c) if c.is_ascii_hexdigit() => {
+                            hex.push(c);
+                            self.advance();
+                        }
+                        _ => return Err(self.return_error(LexerErrorKinds::InvalidEscape)),
+                    }
+                }
+                let code_point = u32::from_str_radix(&hex, 16)
+                    .map_err(|_| self.return_error(LexerErrorKinds::InvalidEscape))?;
+                if let Some(ch) = char::from_u32(code_point) {
+                    result.push(ch);
+                } else {
+                    return Err(self.return_error(LexerErrorKinds::InvalidEscape));
+                }
+            }
+            Some(c) => return Err(self.return_error(LexerErrorKinds::InvalidEscapeChar(c))),
+            None => return Err(self.return_error(LexerErrorKinds::InvalidEscape)),
+        }
+        Ok(())
     }
 }
 
