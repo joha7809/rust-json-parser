@@ -68,6 +68,19 @@ where
         Ok(k)
     }
 
+    fn expect_either(&mut self, kinds: &[TokenKind]) -> Result<Token, ParserError> {
+        // TODO: Pretty hacky but works i guess?
+        let k = self.advance()?;
+        if !kinds.contains(&k.kind) {
+            return Err(ParserError::Parser {
+                kind: ParserErrorKind::ExpectedOneOfTokens(kinds.to_vec(), k.kind),
+                line: k.line,
+                column: k.column,
+            });
+        }
+        Ok(k)
+    }
+
     pub fn parse(&mut self) -> PResult<JSONValue> {
         let value = self.parse_value()?;
         // After parsing the value, we expect an EOF token
@@ -177,7 +190,7 @@ where
             // comma to be followed
             arr.push(self.parse_value()?);
             if *self.peek_kind()? != TokenKind::RightBracket {
-                let token = self.expect(TokenKind::Comma)?;
+                let token = self.expect_either(&[TokenKind::Comma, TokenKind::RightBracket])?;
                 if *self.peek_kind()? == TokenKind::RightBracket {
                     return Err(ParserError::Parser {
                         kind: ParserErrorKind::TrailingComma,
