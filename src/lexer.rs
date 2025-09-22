@@ -1,8 +1,8 @@
 use std::{char, str::Chars};
 
 use crate::{
+    errors::{LexerError, LexerErrorKinds},
     jsonvalue::TokenKind,
-    lexer_error::{LexerError, LexerErrorKinds},
 };
 
 #[derive(Debug, Clone)]

@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 
 use crate::{
+    errors::{LexerError, ParserError, ParserErrorKind},
     jsonvalue::{JSONValue, TokenKind},
     lexer::{Lexer, Token},
-    lexer_error::LexerError,
-    parser_errors::{ParserError, ParserErrorKind},
 };
 
 pub fn parse_json(input: &str) -> Result<JSONValue, ParserError> {
