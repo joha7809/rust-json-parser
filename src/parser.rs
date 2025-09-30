@@ -92,7 +92,7 @@ where
     fn parse_value(&mut self) -> PResult<JSONValue> {
         // This function should look at the next token and decide which parse_* function to call
         let token = self.peek()?;
-        match token.kind.clone() {
+        match &token.kind {
             TokenKind::LeftBrace => self.parse_object(),
             TokenKind::LeftBracket => self.parse_array(),
             TokenKind::String(_) => {
@@ -122,7 +122,7 @@ where
                 Ok(JSONValue::Null)
             }
             unexpected => Err(ParserError::Parser {
-                kind: ParserErrorKind::UnexpectedToken(unexpected),
+                kind: ParserErrorKind::UnexpectedToken(unexpected.clone()),
                 line: (token.line),
                 column: (token.column),
             }),
@@ -130,9 +130,10 @@ where
     }
 
     fn parse_object(&mut self) -> PResult<JSONValue> {
+        //TODO: low cost lookahead and count commas for capacity
         // Exoect the left bracket and consume it, propogating error if another type
         // Lets initialize a HashMap to hold the key-value pairs
-        let mut map: HashMap<String, JSONValue> = std::collections::HashMap::new();
+        let mut map: HashMap<String, JSONValue> = std::collections::HashMap::with_capacity(8);
         self.expect(TokenKind::LeftBrace)?;
 
         if *self.peek_kind()? != TokenKind::RightBrace {
@@ -181,9 +182,10 @@ where
     }
 
     fn parse_array(&mut self) -> PResult<JSONValue> {
+        //TODO: low cost lookahead and count commas for capacity
         // Consume left bracket
         self.expect(TokenKind::LeftBracket)?;
-        let mut arr: Vec<JSONValue> = Vec::new();
+        let mut arr: Vec<JSONValue> = Vec::with_capacity(8);
 
         while *self.peek_kind()? != TokenKind::RightBracket {
             // While we dont see the RightBracket, we pass the current JSON value, and expect a

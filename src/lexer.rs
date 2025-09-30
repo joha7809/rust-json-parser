@@ -1,5 +1,5 @@
 use std::{char, str::Chars};
-
+//TODO: Rewrite lexer to support string slices, instead of taking copies everywhere
 use crate::{
     errors::{LexerError, LexerErrorKinds},
     jsonvalue::TokenKind,
@@ -44,7 +44,7 @@ impl<'a> Iterator for Lexer<'a> {
 
 impl<'a> Lexer<'a> {
     pub fn new(input: &'a str) -> Self {
-        let chars = input.chars().peekable();
+        let chars = input.chars().peekable(); //TODO: we can iterate over bytes instead of chars
 
         Self {
             input: chars,
@@ -117,6 +117,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    //TODO: possible mark advance, peek and skip_whitespace with [inline(always)]
     fn advance(&mut self) {
         match self.input.next() {
             Some('\n') => {
@@ -129,21 +130,22 @@ impl<'a> Lexer<'a> {
     }
 
     fn peek(&mut self) -> Option<char> {
-        self.input.peek().copied()
+        self.input.peek().copied() //TODO: dont copy
     }
 
     fn skip_whitespace(&mut self) {
-        while let Some(char) = self.peek() {
-            if char.is_whitespace() {
-                self.advance();
-            } else {
-                break;
+        while let Some(c) = self.peek() {
+            match c {
+                ' ' | '\n' | '\r' | '\t' => self.advance(),
+                _ => break,
             }
         }
     }
 
     fn read_string(&mut self) -> Result<String, LexerError> {
-        let mut result = String::new();
+        //TODO: Pre allocate size, and use Cow<_,_> instead
+        // When we find escape characters create and copy content to String, else return slice
+        let mut result = String::with_capacity(8);
         self.advance(); // Skip the opening quote
 
         while let Some(c) = self.peek() {
@@ -168,13 +170,17 @@ impl<'a> Lexer<'a> {
     }
 
     fn read_number(&mut self) -> Result<f64, LexerError> {
-        let mut nums = String::new();
+        //TODO: Make numbers int or f64, and lazily parse them
+        // possibly only parse when data is needed ie even after parsing
+        let mut nums = String::with_capacity(8);
 
         // Check for optional minus
         if let Some('-') = self.peek() {
             nums.push('-');
             self.advance(); // consume it
         }
+
+        //TODO: after using slices, we no longer need to branch out
 
         // Read integers
         self.read_integer(&mut nums)?;

@@ -10,8 +10,8 @@ pub enum JSONValue {
     Null,
     /// floating point number for decimal numbers in JSON
     Number(f64),
-    Object(HashMap<String, JSONValue>), //TODO: Use something else to preserve order
-    String(String),                     // TODO: use &str with lifetime for better performance
+    Object(HashMap<String, JSONValue>), //TODO: Use something else to preserve order, perhaps use vec with prescanning of capacity
+    String(String),                     // TODO: use &str with lifetime for better performance or Cow<'a, str)
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -22,8 +22,8 @@ pub enum TokenKind {
     RightBracket, // ]
     Colon,        // :
     Comma,        // ,
-    String(String),
-    Number(f64),
+    String(String), //TODO: again use Cow<a', str>
+    Number(f64), //TODO: store raw slice; parse later
     True,
     False,
     Null,
